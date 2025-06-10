@@ -1,0 +1,30 @@
+{
+  "name": "hitbot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "pm2 start ecosystem.config.cjs",
+    "restart": "pm2 restart HITBOT",
+    "stop": "pm2 stop HITBOT",
+    "delete": "pm2 delete HITBOT",
+    "logs": "pm2 logs HITBOT",
+    "monitor": "pm2 monit",
+    "save": "pm2 save",
+    "startup": "pm2 startup",
+    "status": "pm2 status",
+    "dev": "node ./src/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.18",
+    "chalk": "^5.4.1",
+    "figlet": "^1.8.1",
+    "link-preview-js": "^3.1.0",
+    "ora": "^8.2.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
