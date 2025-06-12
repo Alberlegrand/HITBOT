@@ -27,6 +27,8 @@
     "link-preview-js": "^3.1.0",
     "ora": "^8.2.0",
     "path": "^0.12.7",
+    "dotenv": "^16.4.5",
+    "axios": "^1.6.8",
     "qrcode-terminal": "^0.12.0"
   }
 }
