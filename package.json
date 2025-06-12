@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "pm2 start ecosystem.config.cjs",
+    "start": "pm2 start ecosystem.config.cjs --deep-monitoring --attach --name HITBOT",
     "restart": "pm2 restart HITBOT",
     "stop": "pm2 stop HITBOT",
     "delete": "pm2 delete HITBOT",
@@ -13,7 +13,7 @@
     "save": "pm2 save",
     "startup": "pm2 startup",
     "status": "pm2 status",
-    "dev": "node ./src/index.js"
+    "dev": "pm2 start ./src/index.js --deep-monitoring --attach --name HITBOT"
   },
   "keywords": [],
   "author": "",
@@ -23,8 +23,10 @@
     "@whiskeysockets/baileys": "^6.7.18",
     "chalk": "^5.4.1",
     "figlet": "^1.8.1",
+    "fs": "^0.0.1-security",
     "link-preview-js": "^3.1.0",
     "ora": "^8.2.0",
+    "path": "^0.12.7",
     "qrcode-terminal": "^0.12.0"
   }
 }

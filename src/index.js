@@ -1,6 +1,11 @@
 // src/index.js
 
-import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
+import {
+  makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion
+} from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import qrcode from 'qrcode-terminal';
 import figlet from 'figlet';
@@ -10,6 +15,7 @@ import { handleMessage } from './handlers.js';
 
 console.clear();
 
+// Affichage du logo
 try {
   console.log(chalk.green(figlet.textSync("HITBOT", { horizontalLayout: 'full' })));
 } catch (err) {
@@ -17,16 +23,23 @@ try {
 }
 
 async function startBot() {
-  const spinner = ora('Initialisation de HITBOT...').start();
+  const spinner = ora('🔄 Initialisation de HITBOT...').start();
 
   try {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info');
 
+    const { version, isLatest } = await fetchLatestBaileysVersion();
+    console.log(chalk.blue(`📦 Version Baileys: ${version.join('.')}, dernière version: ${isLatest ? 'Oui' : 'Non'}`));
+
     const sock = makeWASocket({
+      version,
       auth: state,
+      printQRInTerminal: false,
       browser: ['HITBOT', 'Chrome', '1.0.0'],
+      syncFullHistory: false, // Multi-device : éviter de tout synchroniser pour aller plus vite
     });
 
+    // 🔐 Sauvegarde des credentials automatiquement
     sock.ev.on('creds.update', async () => {
       try {
         await saveCreds();
@@ -35,121 +48,118 @@ async function startBot() {
       }
     });
 
+    // 🔗 Connexion et QR Code
     sock.ev.on('connection.update', async (update) => {
-      try {
-        const { connection, lastDisconnect, qr } = update;
+      const { connection, lastDisconnect, qr } = update;
 
-        if (qr) {
-          try {
-            console.log(chalk.yellow('[QR Code] Scannez ce QR pour vous connecter à WhatsApp :'));
-            qrcode.generate(qr, { small: true });
-          } catch (err) {
-            console.error('❌ Erreur d’affichage du QR Code :', err);
-          }
+      if (qr) {
+        console.log(chalk.yellow('[QR Code] Scannez ce QR pour vous connecter à WhatsApp :'));
+        qrcode.generate(qr, { small: true });
+      }
+
+      if (connection === 'close') {
+        const isBoom = lastDisconnect?.error instanceof Boom;
+        const shouldReconnect = isBoom
+          ? lastDisconnect.error.output?.statusCode !== DisconnectReason.loggedOut
+          : true;
+
+        console.log(chalk.red('❌ Déconnecté de WhatsApp'));
+        if (isBoom) {
+          console.log(chalk.red('📛 Raison :'), lastDisconnect.error.message);
         }
 
-        if (connection === 'close') {
-          const isBoom = lastDisconnect?.error instanceof Boom;
-          const shouldReconnect = isBoom
-            ? lastDisconnect.error.output?.statusCode !== DisconnectReason.loggedOut
-            : true;
-
-          console.log(chalk.red('❌ Déconnecté de WhatsApp'));
-          if (isBoom) {
-            console.log(chalk.red('Raison :'), lastDisconnect.error.message);
-          }
-
-          if (shouldReconnect) {
-            console.log(chalk.cyan('🔁 Tentative de reconnexion...'));
-            return startBot();
-          } else {
-            console.log(chalk.redBright('🔒 Déconnecté définitivement. Re-scan du QR nécessaire.'));
-          }
-
-        } else if (connection === 'open') {
-          spinner.succeed('✅ Connexion réussie à WhatsApp');
-
-          console.log(
-            chalk.greenBright.bold("🌟 HITBOT CONNECTED 🌟") +
-            chalk.white("\nStatus: ") + chalk.green("Successful ✅") +
-            chalk.cyanBright("\n🎉 JOIN FOR MORE UPDATES 🎉") +
-            chalk.blue("\n📢 Channel: ") + chalk.underline.blue("https://whatsapp.com/channel/0029VaDAkV9FHWqAMMHvb40b")
-          );
-
-          try {
-            await sock.sendMessage(sock.user.id, {
-              text: `🌟 HITBOT CONNECTED 🌟\nStatus: Successful ✅\n🎉 Merci d’utiliser HITBOT 🎉\n📢 Rejoignez notre canal: https://whatsapp.com/channel/0029VaDAkV9FHWqAMMHvb40b`
-            });
-          } catch (err) {
-            console.error('❌ Erreur lors de l’envoi du message de confirmation :', err);
-          }
+        if (shouldReconnect) {
+          console.log(chalk.cyan('🔁 Tentative de reconnexion...'));
+          return startBot();
+        } else {
+          console.log(chalk.redBright('🔒 Déconnecté définitivement. Re-scan du QR nécessaire.'));
         }
+      } else if (connection === 'open') {
+        spinner.succeed('✅ Connexion réussie à WhatsApp');
+        console.log(
+          chalk.greenBright.bold("🌟 HITBOT CONNECTÉ 🌟") +
+          chalk.white("\nStatut: ") + chalk.green("Réussi ✅") +
+          chalk.cyanBright("\n🎉 SUIVEZ POUR PLUS DE MISES À JOUR 🎉") +
+          chalk.blue("\n📢 Canal: ") + chalk.underline.blue("https://whatsapp.com/channel/0029VaDAkV9FHWqAMMHvb40b")
+        );
 
-      } catch (err) {
-        console.error('❌ Erreur dans connection.update :', err);
+        try {
+          await sock.sendMessage(sock.user.id, {
+            text: `🌟 HITBOT CONNECTÉ 🌟\nStatut: Réussi ✅\n🎉 Merci d’utiliser HITBOT 🎉\n📢 Canal: https://whatsapp.com/channel/0029VaDAkV9FHWqAMMHvb40b`
+          });
+        } catch (err) {
+          console.error('❌ Erreur lors de l’envoi du message de confirmation :', err);
+        }
       }
     });
 
-    // ✅ Réaction auto statuts
+    // ✅ Auto-vu & réaction aux statuts
     sock.ev.on('messages.upsert', async (chatUpdate) => {
-      try {
-        const alg = chatUpdate.messages[0];
-        const fromJid = alg.key.participant || alg.key.remoteJid;
+      for (const hitbot of chatUpdate.messages) {
+        if (!hitbot || !hitbot.message || hitbot.key.fromMe) continue;
 
-        // Vérifications de sécurité
-        if (!alg || !alg.message || alg.key.fromMe) return;
-        if (alg.message?.protocolMessage || alg.message?.ephemeralMessage || alg.message?.reactionMessage) return;
+        // Éviter les messages système
+        if (hitbot.message?.protocolMessage || hitbot.message?.ephemeralMessage || hitbot.message?.reactionMessage) continue;
 
-        // Si c'est un statut WhatsApp
-        if (alg.key && alg.key.remoteJid === 'status@broadcast') {
-          // Marquer comme lu
-          await sock.readMessages([alg.key]);
+        // Gestion des statuts
+        if (hitbot.key.remoteJid === 'status@broadcast') {
+          try {
+            await sock.readMessages([hitbot.key]);
 
-          // Choisir un emoji à envoyer en réaction (❤️ ici, ou remplace par un autre)
             const emojis = ['❤️', '😂', '🔥', '😍', '🥰', '😎', '👍', '🙏', '🎉', '🥳', '😄', '😅', '🤩', '💯', '👏', '😜', '😇', '🤗', '😏', '😃'];
             const emoji = emojis[Math.floor(Math.random() * emojis.length)];
 
-          // Envoyer la réaction (like du statut)
-          await sock.sendMessage(
-            alg.key.remoteJid,
-            {
-              react: {
-                text: emoji,
-                key: alg.key
+            await sock.sendMessage(
+              hitbot.key.remoteJid,
+              {
+                react: {
+                  text: emoji,
+                  key: hitbot.key
+                }
+              },
+              {
+                statusJidList: [hitbot.key.participant]
               }
-            },
-            {
-              statusJidList: [alg.key.participant]
-            }
-          );
+            );
 
-          // Log (optionnel)
-          console.log(chalk.green('👍 Statut vu et aimé avec une réaction.'));
+            console.log(chalk.green(`👍 Statut vu et aimé avec : ${emoji}`));
+          } catch (err) {
+            console.error('❌ Erreur dans la gestion des statuts :', err);
+          }
         }
 
-      } catch (err) {
-        console.error('❌ Erreur dans la gestion des statuts (auto seen & like) :', err);
-      }
+        // ✅ Commande ping -> pong
+       /*  if (hitbot.message?.conversation?.toLowerCase().trim() === 'ping') {
+          try {
+            await sock.sendMessage(hitbot.key.remoteJid, { text: 'pong 🏓' }, { quoted: hitbot });
+          } catch (err) {
+            console.error('❌ Erreur réponse pong :', err);
+          }*/
+        } 
+
+        sock.ev.on('messages.upsert', async ({ messages }) => {
+  const hitbot = messages[0];
+
+  // Assurez-vous qu'il ne s'agit pas d'un message système ou d'un statut
+  if (!hitbot.message) return;
+
+  // 👇 Traitement personnalisé si le message contient une conversation texte
+  if (hitbot.message?.conversation) {
+    const messageObj = {
+      content: hitbot.message.conversation,
+      reply: (text) => {
+        sock.sendMessage(hitbot.key.remoteJid, { text }, { quoted: hitbot });
+      },
+    };
+
+    handleMessage(messageObj);
+  }
+});
+
     });
 
 
-    // ✅ Commande ping -> pong
-    sock.ev.on('messages.upsert', async ({ messages, type }) => {
-      if (type !== 'notify') return;
-      if (!messages || !messages[0]) return;
-
-      const msg = messages[0];
-      if (msg.key.fromMe) return;
-      if (!msg.message?.conversation) return;
-
-      // Adapter le format du message pour le handler
-      const messageObj = {
-        content: msg.message.conversation,
-        reply: (text) => sock.sendMessage(msg.key.remoteJid, { text }, { quoted: msg }),
-      };
-
-      handleMessage(messageObj);
-    });
+    
 
   } catch (err) {
     spinner.fail('❌ Échec de l’initialisation de HITBOT');
