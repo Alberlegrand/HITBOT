@@ -92,36 +92,86 @@ async function startBot() {
       }
     });
 
-    // ✅ Auto-vu & réaction aux statuts
+   // ✅ Auto-vu & réaction aux statuts avec gestion d'erreur robuste
+
     sock.ev.on('messages.upsert', async (update) => {
+        try {
             const msg = update.messages[0];
+            if (!msg || !msg.key || !msg.key.remoteJid) {
+                console.warn('Message vide ou clé manquante, aucune action.');
+                return;
+            }
 
             // Vérifiez si le message vient des statuts
             if (msg.key.remoteJid === 'status@broadcast') {
-                const me = await sock.user.id;
-
-                // Tableau d'emojis pour les réactions aléatoires (plus de 20)
+                // Tableau d'emojis pour les réactions aléatoires
                 const emojis = [
                     '💚', '🔥', '😊', '🎉', '👍', '💫', '🥳', '✨',
                     '😎', '🌟', '❤️', '😂', '🤔', '😅', '🙌', '👏',
                     '💪', '🤩', '🎶', '💜', '👀', '🤗', '🪄', '😋',
-                    '🤝', '🥰', '😻', '🆒', '🙈', '😇', '🎈', '😇', '🥳', '🧐', '🥶', '☠️', '🤓', '🤖', '👽', '🐼', '🇭🇹'
+                    '🤝', '🥰', '😻', '🆒', '🙈', '😇', '🎈', '🥳', 
+                    '🧐', '🥶', '☠️', '🤓', '🤖', '👽', '🐼', '🇭🇹'
                 ];
 
                 // Choisir un emoji aléatoire
                 const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
 
-                // Envoyer la réaction
+                // ✅ Correction importante : enlever les options invalides qui causent EKEYTYPE
                 await sock.sendMessage(
                     msg.key.remoteJid,
-                    { react: { key: msg.key, text: randomEmoji } },
-                    { statusJidList: [msg.key.participant, me] }
+                    { react: { key: msg.key, text: randomEmoji } }
                 );
-                console.log("Status lu et amie avec sucess : ", randomEmoji);
+
+                console.log("✅ Statut vu et réagi avec succès :", randomEmoji);
             }
+        } catch (err) {
+            // Gestion spécifique de l'erreur EKEYTYPE
+            if (err.errorcode === 'EKEYTYPE') {
+                console.error('❌ Erreur EKEYTYPE détectée (clé invalide pour node-cache)');
+            } 
+            // Gestion des autres erreurs éventuelles
+            else {
+                console.error('❌ Erreur inattendue lors de la réaction au statut :', err);
+            }
+        }
     });
 
-     
+    //Message handler
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+      try {
+          const hitbot = messages[0];
+          if (!hitbot || !hitbot.message || !hitbot.key || !hitbot.key.remoteJid) {
+              console.warn('Message vide, message système ou clé manquante, aucune action.');
+              return;
+          }
+
+          // Vérifie s'il s'agit d'un message texte classique
+          if (hitbot.message.conversation) {
+              const content = hitbot.message.conversation;
+
+              const messageObj = {
+                  content,
+                  reply: async (text) => {
+                      try {
+                          await sock.sendMessage(
+                              hitbot.key.remoteJid,
+                              { text },
+                              { quoted: hitbot }
+                          );
+                      } catch (err) {
+                          console.error('❌ Erreur lors de l\'envoi de la réponse :', err);
+                      }
+                  }
+              };
+
+              // Appel vers ton handler principal (gestion des commandes, etc.)
+              handleMessage(messageObj);
+          }
+      } catch (err) {
+          console.error('❌ Erreur inattendue dans messages.upsert :', err);
+      }
+    });
+
 
   } catch (err) {
     spinner.fail('❌ Échec de l’initialisation de HITBOT');
