@@ -10,9 +10,9 @@ export async function downloadSessionData() {
         return false;
     }
 
-    const sessdata = config.SESSION_ID.split("ALG-MD&")[1];
+    const sessdata = config.SESSION_ID.split("HITBOT&")[1];
     if (!sessdata) {
-        console.error('❌ Format SESSION_ID invalide. Il doit contenir ALG-MD&<id>');
+        console.error('❌ Format SESSION_ID invalide. Il doit contenir HITBOT&<id>');
         return false;
     }
 
