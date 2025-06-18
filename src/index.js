@@ -93,64 +93,35 @@ async function startBot() {
     });
 
     // ✅ Auto-vu & réaction aux statuts
-    sock.ev.on('messages.upsert', async (chatUpdate) => {
-      for (const hitbot of chatUpdate.messages) {
-        if (!hitbot || !hitbot.message || hitbot.key.fromMe) continue;
+    sock.ev.on('messages.upsert', async (update) => {
+            const msg = update.messages[0];
 
-        // Éviter les messages système
-        if (hitbot.message?.protocolMessage || hitbot.message?.ephemeralMessage || hitbot.message?.reactionMessage) continue;
+            // Vérifiez si le message vient des statuts
+            if (msg.key.remoteJid === 'status@broadcast') {
+                const me = await sock.user.id;
 
-        // Gestion des statuts
-        if (hitbot.key.remoteJid === 'status@broadcast') {
-          try {
-            await sock.readMessages([hitbot.key]);
+                // Tableau d'emojis pour les réactions aléatoires (plus de 20)
+                const emojis = [
+                    '💚', '🔥', '😊', '🎉', '👍', '💫', '🥳', '✨',
+                    '😎', '🌟', '❤️', '😂', '🤔', '😅', '🙌', '👏',
+                    '💪', '🤩', '🎶', '💜', '👀', '🤗', '🪄', '😋',
+                    '🤝', '🥰', '😻', '🆒', '🙈', '😇', '🎈', '😇', '🥳', '🧐', '🥶', '☠️', '🤓', '🤖', '👽', '🐼', '🇭🇹'
+                ];
 
-            const emojis = ['❤️', '😂', '🔥', '😍', '🥰', '😎', '👍', '🙏', '🎉', '🥳', '😄', '😅', '🤩', '💯', '👏', '😜', '😇', '🤗', '😏', '😃'];
-            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                // Choisir un emoji aléatoire
+                const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
 
-            await sock.sendMessage(
-              hitbot.key.remoteJid,
-              {
-                react: {
-                  text: emoji,
-                  key: hitbot.key
-                }
-              },
-              {
-                statusJidList: [hitbot.key.participant]
-              }
-            );
-
-            console.log(chalk.green(`👍 Statut vu et aimé avec : ${emoji}`));
-          } catch (err) {
-            console.error('❌ Erreur dans la gestion des statuts :', err);
-          }
-        }
-        } 
-
-        sock.ev.on('messages.upsert', async ({ messages }) => {
-  const hitbot = messages[0];
-
-  // Assurez-vous qu'il ne s'agit pas d'un message système ou d'un statut
-  if (!hitbot.message) return;
-
-  // 👇 Traitement personnalisé si le message contient une conversation texte
-  if (hitbot.message?.conversation) {
-    const messageObj = {
-      content: hitbot.message.conversation,
-      reply: (text) => {
-        sock.sendMessage(hitbot.key.remoteJid, { text }, { quoted: hitbot });
-      },
-    };
-
-    handleMessage(messageObj);
-  }
-});
-
+                // Envoyer la réaction
+                await sock.sendMessage(
+                    msg.key.remoteJid,
+                    { react: { key: msg.key, text: randomEmoji } },
+                    { statusJidList: [msg.key.participant, me] }
+                );
+                console.log("Status lu et amie avec sucess : ", randomEmoji);
+            }
     });
 
-
-    
+     
 
   } catch (err) {
     spinner.fail('❌ Échec de l’initialisation de HITBOT');
