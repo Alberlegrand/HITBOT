@@ -17,7 +17,7 @@ for (const file of readdirSync(commandsPath)) {
   }
 }
 
-export function handleMessage(msg) {
+export function handleMessage(msg, sock) {
   if (!msg.content.startsWith(prefix)) return;
   const args = msg.content.slice(prefix.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
