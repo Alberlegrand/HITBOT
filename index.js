@@ -7,7 +7,8 @@ import {
   DisconnectReason,
   useMultiFileAuthState
 } from '@whiskeysockets/baileys';
-import { handleMessage } from './handlers.js';
+
+import { handleMessage } from './src/handlers.js';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -133,6 +134,42 @@ async function startBot() {
         } catch (err) {
           console.error("❌ Erreur lors de l'envoi de la réaction statut:", err.message);
         }
+      }
+    });
+
+    //Message handler
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+      try {
+          const hitbot = messages[0];
+          if (!hitbot || !hitbot.message || !hitbot.key || !hitbot.key.remoteJid) {
+              console.warn('Message vide, message système ou clé manquante, aucune action.');
+              return;
+          }
+
+          // Vérifie s'il s'agit d'un message texte classique
+          if (hitbot.message.conversation) {
+              const content = hitbot.message.conversation;
+
+              const messageObj = {
+                  content,
+                  reply: async (text) => {
+                      try {
+                          await sock.sendMessage(
+                              hitbot.key.remoteJid,
+                              { text },
+                              { quoted: hitbot }
+                          );
+                      } catch (err) {
+                          console.error('❌ Erreur lors de l\'envoi de la réponse :', err);
+                      }
+                  }
+              };
+
+              // Appel vers ton handler principal (gestion des commandes, etc.)
+              handleMessage(messageObj);
+          }
+      } catch (err) {
+          console.error('❌ Erreur inattendue dans messages.upsert :', err);
       }
     });
 
