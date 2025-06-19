@@ -29,6 +29,7 @@
     "path": "^0.12.7",
     "dotenv": "^16.4.5",
     "axios": "^1.6.8",
+    "express": "^4.19.2",
     "qrcode-terminal": "^0.12.0"
   }
 }
