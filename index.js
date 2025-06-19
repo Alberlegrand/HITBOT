@@ -166,7 +166,7 @@ async function startBot() {
               };
 
               // Appel vers ton handler principal (gestion des commandes, etc.)
-              handleMessage(messageObj);
+              handleMessage(messageObj, sock);
           }
       } catch (err) {
           console.error('❌ Erreur inattendue dans messages.upsert :', err);
