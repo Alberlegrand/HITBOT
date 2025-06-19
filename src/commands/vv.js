@@ -21,15 +21,15 @@ export default {
         !['imageMessage', 'videoMessage', 'audioMessage'].includes(msg.quoted.mtype)
       ) {
         console.log("ℹ️ Aucun média à vue unique détecté.");
-        await sock.sendMessage(msg.from, { text: "❌ Ce n'est pas un média à vue unique valide." });
+        await sock.sendMessage(botUser, { text: "❌ Ce n'est pas un média à vue unique valide." });
         return;
       }
 
       console.log("📥 Téléchargement du média...");
-      await sock.sendMessage(msg.from, { text: "📥 Téléchargement du média en cours..." });
+      await sock.sendMessage(botUser, { text: "📥 Téléchargement du média en cours..." });
 
       const mediaMsg = msg.quoted.message;
-Type = Object.keys(mediaMsg)[0];
+      const mediaType = Object.keys(mediaMsg)[0]; // ✅ correct ici
       const caption = mediaMsg[mediaType].caption || '';
       const newCaption = `${caption}\n\n> HITBOT © 2025`;
 
@@ -53,7 +53,7 @@ Type = Object.keys(mediaMsg)[0];
       };
 
       console.log("📤 Envoi au propriétaire...");
-      await sock.sendMessage(msg.from, { text: "📤 Envoi du média au propriétaire..." });
+      await sock.sendMessage(botUser, { text: "📤 Envoi du média au propriétaire..." });
 
       if (/video/.test(mediaType)) {
         await sock.sendMessage(botUser, { video: buffer, caption: newCaption, ...messageOptions });
@@ -64,7 +64,7 @@ Type = Object.keys(mediaMsg)[0];
       }
 
       console.log("✅ Message transmis et commande traitée.");
-      await sock.sendMessage(msg.from, { text: "✅ Média révélé et transféré avec succès !" });
+      await sock.sendMessage(botUser, { text: "✅ Média révélé et transféré avec succès !" });
 
       await sock.deleteMessage(msg.from, {
         id: msg.id,
