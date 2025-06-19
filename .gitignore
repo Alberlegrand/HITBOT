@@ -1,3 +1,4 @@
+auth_infos/
 node_modules/
 .env
 package-lock.json
